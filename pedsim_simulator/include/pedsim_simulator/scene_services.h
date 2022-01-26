@@ -107,6 +107,7 @@ class SceneServices {
   bool removeModelsInFlatland(std::vector<std::string> model_names);
   bool spawnModelsInFlatland(std::vector<flatland_msgs::Model> models);
   // bool respawnModelsInFlatland(std::vector<std::string> old_model_names, std::vector<flatland_msgs::Model> new_models);
+  bool createSourcesInSoundManager(std::vector<int> ids);
   void removeAllReferencesToInteractiveObstacles();
   void removeAllInteractiveObstaclesFromPedsim();
   void removeAllInteractiveObstaclesFromFlatland();
@@ -122,6 +123,8 @@ class SceneServices {
 
   std::string delete_models_topic_;
   ros::ServiceClient delete_models_client_;
+
+  ros::ServiceClient create_ped_sources_client_;
 
   std::vector<Obstacle*> walls;
 };

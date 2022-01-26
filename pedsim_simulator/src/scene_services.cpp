@@ -18,6 +18,7 @@
 #include <flatland_msgs/SpawnModels.h>
 #include <flatland_msgs/DeleteModels.h>
 // #include <flatland_msgs/RespawnModels.h>
+#include <arena_sound_srvs/CreatePedSources.h>
 #include <iostream>
 #include <pedsim_simulator/rng.h>
 #include <ros/package.h>
@@ -45,10 +46,14 @@ SceneServices::SceneServices(){
   // respawn_models_client_ = nh_.serviceClient<flatland_msgs::RespawnModels>(respawn_models_topic_, true);
   delete_models_topic_ = ros::this_node::getNamespace() + "/delete_models";
   delete_models_client_ = nh_.serviceClient<flatland_msgs::DeleteModels>(delete_models_topic_, true);
+
+  // arena sound manager service
+  create_ped_sources_client_ = nh_.serviceClient<arena_sound_srvs::CreatePedSources>("create_ped_sources", true);
 }
 
 bool SceneServices::spawnPeds(pedsim_srvs::SpawnPeds::Request &request, pedsim_srvs::SpawnPeds::Response &response) {
   std::vector<flatland_msgs::Model> flatland_models;
+  std::vector<int> sound_source_ids;
 
   for (int ped_i = 0; ped_i < (int) request.peds.size(); ped_i++) {
     pedsim_msgs::Ped ped = request.peds[ped_i];
@@ -60,9 +65,12 @@ bool SceneServices::spawnPeds(pedsim_srvs::SpawnPeds::Request &request, pedsim_s
     // add flatland models to spawn_models service request
     std::vector<flatland_msgs::Model> new_models = getFlatlandModels(ped, new_agent_ids);
     flatland_models.insert(flatland_models.end(), new_models.begin(), new_models.end());
+
+    sound_source_ids.insert(sound_source_ids.end(), new_agent_ids.begin(), new_agent_ids.end());
   }
 
-  bool res = spawnModelsInFlatland(flatland_models);
+  bool res = createSourcesInSoundManager(sound_source_ids);
+  res |= spawnModelsInFlatland(flatland_models);
   response.success = res;
   return res;
 }
@@ -93,6 +101,8 @@ bool SceneServices::removeAllPeds(std_srvs::SetBool::Request &request,
                                 std_srvs::SetBool::Response &response){
   std::vector<std::string> model_names = removePedsInPedsim();
   bool res = removeModelsInFlatland(model_names);
+
+  ROS_INFO("!!!SceneServices::removeAllPeds called!!!");
   response.success = res;
   return res;
 }
@@ -527,6 +537,29 @@ bool SceneServices::spawnModelsInFlatland(std::vector<flatland_msgs::Model> mode
 
   return true; 
 }
+
+bool SceneServices::createSourcesInSoundManager(std::vector<int> ids) {
+  arena_sound_srvs::CreatePedSources msg;
+
+  std::vector<short> ids_short(begin(ids), end(ids));
+  msg.request.source_ids = ids_short;
+
+  while (!create_ped_sources_client_.isValid()) {
+    ROS_WARN("Reconnecting create_ped_sources_client-server...");
+    create_ped_sources_client_.waitForExistence(ros::Duration(2.0));
+    create_ped_sources_client_ = nh_.serviceClient<arena_sound_srvs::CreatePedSources>("create_ped_sources", true);
+  }
+
+  create_ped_sources_client_.call(msg);
+  
+  if (!msg.response.success) {
+    ROS_ERROR("Failed to create sound sources for the pedsim agents");
+    return false;
+  }
+  
+  return true;
+}
+
 
 // bool SceneServices::respawnModelsInFlatland(std::vector<std::string> old_model_names, std::vector<flatland_msgs::Model> new_models) {
 //   flatland_msgs::RespawnModels msg;
