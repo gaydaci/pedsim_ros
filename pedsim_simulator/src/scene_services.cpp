@@ -48,7 +48,7 @@ SceneServices::SceneServices(){
   delete_models_client_ = nh_.serviceClient<flatland_msgs::DeleteModels>(delete_models_topic_, true);
 
   // arena sound manager service
-  create_ped_sources_client_ = nh_.serviceClient<arena_sound_srvs::CreatePedSources>("create_ped_sources", true);
+  create_ped_sources_client_ = nh_.serviceClient<arena_sound_srvs::CreatePedSources>("/sound_manager/create_ped_sources", true);
 }
 
 bool SceneServices::spawnPeds(pedsim_srvs::SpawnPeds::Request &request, pedsim_srvs::SpawnPeds::Response &response) {
@@ -547,7 +547,7 @@ bool SceneServices::createSourcesInSoundManager(std::vector<int> ids) {
   while (!create_ped_sources_client_.isValid()) {
     ROS_WARN("Reconnecting create_ped_sources_client-server...");
     create_ped_sources_client_.waitForExistence(ros::Duration(2.0));
-    create_ped_sources_client_ = nh_.serviceClient<arena_sound_srvs::CreatePedSources>("create_ped_sources", true);
+    create_ped_sources_client_ = nh_.serviceClient<arena_sound_srvs::CreatePedSources>("/sound_manager/create_ped_sources", true);
   }
 
   create_ped_sources_client_.call(msg);
